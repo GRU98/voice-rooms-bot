@@ -46,6 +46,18 @@ class TemporaryChannel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class UserPreset(Base):
+    __tablename__ = "user_presets"
+    __table_args__ = (UniqueConstraint("guild_id", "user_id", name="uq_preset_guild_user"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    guild_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    base_name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class BlockedUser(Base):
     __tablename__ = "blocked_users"
     __table_args__ = (
