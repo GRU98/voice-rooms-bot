@@ -11,7 +11,12 @@ from discord.ext import commands
 from config import Config, load_config
 from database.engine import Database
 from database.migrations import run_migrations
-from database.repositories import BlockedUserRepository, GuildSettingsRepository, TemporaryChannelRepository
+from database.repositories import (
+    BlockedUserRepository,
+    GuildSettingsRepository,
+    TemporaryChannelRepository,
+    UserPresetRepository,
+)
 from services.channel_service import ChannelService
 from services.ownership_service import OwnershipService
 from services.permission_service import PermissionService
@@ -30,6 +35,7 @@ class Services:
     settings: GuildSettingsRepository
     rooms: TemporaryChannelRepository
     blocked: BlockedUserRepository
+    presets: UserPresetRepository
     permissions: PermissionService
     channels: ChannelService
     ownership: OwnershipService
@@ -53,12 +59,15 @@ class VoiceBot(commands.Bot):
         settings = GuildSettingsRepository(sf)
         rooms = TemporaryChannelRepository(sf)
         blocked = BlockedUserRepository(sf)
+        presets = UserPresetRepository(sf)
         permissions = PermissionService()
         room_locks = LockRegistry()
         channels = ChannelService(self, rooms, permissions)
         ownership = OwnershipService(self, rooms, permissions, channels, room_locks)
-        voice = VoiceService(self, settings, rooms, blocked, permissions, channels, ownership, room_locks)
-        return Services(settings, rooms, blocked, permissions, channels, ownership, voice)
+        voice = VoiceService(
+            self, settings, rooms, blocked, presets, permissions, channels, ownership, room_locks
+        )
+        return Services(settings, rooms, blocked, presets, permissions, channels, ownership, voice)
 
     async def _start_health_server(self) -> None:
         if self.config.health_port <= 0:
