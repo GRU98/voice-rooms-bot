@@ -1,0 +1,7 @@
+.env
+data/
+.venv/
+.idea/
+__pycache__/
+*.pyc
+_smoke.py
