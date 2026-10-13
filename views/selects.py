@@ -6,7 +6,7 @@ from typing import Any
 import discord
 from discord import ui
 
-from utils.helpers import RoomActionError, guarded, reply, resolve_room
+from utils.helpers import RoomActionError, clean_name, guarded, reply, resolve_room, split_room_name
 from utils.permissions import can_manage
 
 LIMIT_VALUES = (0, 1, 2, 3, 4, 5, 10, 15, 20, 25)
@@ -231,11 +231,50 @@ class DeleteRoomButton(ui.Button["SettingsView"]):
         await _services(interaction).voice.destroy_room(room)
 
 
+class SavePresetButton(ui.Button["SettingsView"]):
+    """Store the room's current base name as the user's personal preset for future rooms."""
+
+    def __init__(self) -> None:
+        super().__init__(label="Сохранить название", emoji="💾", style=discord.ButtonStyle.secondary, row=2)
+
+    @guarded
+    async def callback(self, interaction: discord.Interaction) -> None:
+        ctx = await resolve_room(interaction)
+        if ctx is None:
+            return
+        _, voice = ctx
+        base = clean_name(split_room_name(voice.name))
+        if not base:
+            raise RoomActionError("Сначала задайте комнате название.")
+        await interaction.response.defer()
+        await _services(interaction).presets.set(interaction.guild.id, interaction.user.id, base)  # type: ignore[union-attr]
+        await interaction.edit_original_response(
+            content=f"💾 Сохранено. Ваши новые комнаты будут называться «🔊・{base}».", view=None
+        )
+
+
+class ClearPresetButton(ui.Button["SettingsView"]):
+    def __init__(self) -> None:
+        super().__init__(label="Сбросить шаблон", emoji="♻️", style=discord.ButtonStyle.secondary, row=2)
+
+    @guarded
+    async def callback(self, interaction: discord.Interaction) -> None:
+        ctx = await resolve_room(interaction)
+        if ctx is None:
+            return
+        await interaction.response.defer()
+        removed = await _services(interaction).presets.clear(interaction.guild.id, interaction.user.id)  # type: ignore[union-attr]
+        text = "♻️ Личный шаблон удалён — используется шаблон сервера." if removed else "У вас нет сохранённого шаблона."
+        await interaction.edit_original_response(content=text, view=None)
+
+
 class SettingsView(ui.View):
     def __init__(self, guild_bitrate_limit: int) -> None:
         super().__init__(timeout=120)
         self.add_item(BitrateSelect(guild_bitrate_limit))
         self.add_item(DeleteRoomButton())
+        self.add_item(SavePresetButton())
+        self.add_item(ClearPresetButton())
 
 
 # --------------------------------------------------------------------------- setup pickers
