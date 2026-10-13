@@ -8,7 +8,12 @@ from discord.ext import commands
 from sqlalchemy.exc import SQLAlchemyError
 
 from database.models import GuildSettings, TemporaryChannel
-from database.repositories import BlockedUserRepository, GuildSettingsRepository, TemporaryChannelRepository
+from database.repositories import (
+    BlockedUserRepository,
+    GuildSettingsRepository,
+    TemporaryChannelRepository,
+    UserPresetRepository,
+)
 from services.channel_service import ChannelService
 from services.ownership_service import OwnershipService
 from services.permission_service import PermissionService
@@ -34,6 +39,7 @@ class VoiceService:
         settings: GuildSettingsRepository,
         rooms: TemporaryChannelRepository,
         blocked: BlockedUserRepository,
+        presets: UserPresetRepository,
         permissions: PermissionService,
         channels: ChannelService,
         ownership: OwnershipService,
@@ -43,6 +49,7 @@ class VoiceService:
         self._settings = settings
         self._rooms = rooms
         self._blocked = blocked
+        self._presets = presets
         self._permissions = permissions
         self._channels = channels
         self._ownership = ownership
@@ -94,6 +101,13 @@ class VoiceService:
             room = await self._rooms.get_by_voice(channel.id)
             if room is None or not isinstance(channel, discord.VoiceChannel):
                 return
+            # If the room was hidden while the user was inside, they keep an explicit view grant;
+            # drop it so a hidden room does not stay visible to someone who left it.
+            if member.id != room.owner_id:
+                try:
+                    await self._permissions.clear_view_grant(channel, member)
+                except discord.HTTPException:
+                    log.debug("Could not clear view grant for %s on room %s", member.id, channel.id)
             remaining = _humans(channel)
             settings = await self._settings.get(room.guild_id)
             if not remaining:
@@ -131,8 +145,10 @@ class VoiceService:
                 log.warning("Guild %s: bot lacks permissions %s, room not created", guild.id, ", ".join(missing))
                 return
 
+            preset = await self._presets.get(guild.id, member.id)
+            name_template = f"{VOICE_PREFIX}{preset.base_name}" if preset else settings.default_channel_name
             voice = await self._channels.create_room_channel(
-                member, category, settings.default_channel_name, settings.default_user_limit
+                member, category, name_template, settings.default_user_limit
             )
             try:
                 room = await self._rooms.add(
@@ -338,6 +354,19 @@ class VoiceService:
                 await self._permissions.unblock(voice, target)
             await self._blocked.remove(room.id, target_id)
         return f"🔊 <@{target_id}> разблокирован."
+
+    async def resend_panel(self, room: TemporaryChannel, voice: discord.VoiceChannel) -> None:
+        """Delete the old panel message and post a fresh one at the bottom of the room chat."""
+        async with self._room_locks.get(voice.id):
+            if room.panel_message_id:
+                try:
+                    await voice.get_partial_message(room.panel_message_id).delete()
+                except discord.NotFound:
+                    pass
+                except discord.HTTPException:
+                    log.debug("Could not delete old panel %s in room %s", room.panel_message_id, voice.id)
+            room.panel_message_id = None
+            await self._channels.refresh_panel(room, voice=voice, force_new=True)
 
     # ------------------------------------------------------------------ helpers
 
