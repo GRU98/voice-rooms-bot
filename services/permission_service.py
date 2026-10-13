@@ -31,11 +31,23 @@ class PermissionService:
     async def set_hidden(self, voice: discord.VoiceChannel, hidden: bool) -> None:
         if hidden:
             for member in voice.members:
+                if member.bot:
+                    continue
                 overwrite = voice.overwrites_for(member)
                 if overwrite.view_channel is not True:
                     overwrite.view_channel = True
                     await voice.set_permissions(member, overwrite=overwrite, reason="Room hidden")
         await self._set_default(voice, view_channel=False if hidden else None)
+
+    async def clear_view_grant(self, voice: discord.VoiceChannel, member: discord.abc.Snowflake) -> None:
+        """Remove an explicit view_channel grant left over from hiding the room."""
+        overwrite = voice.overwrites_for(member)
+        if overwrite.view_channel is not True:
+            return
+        overwrite.view_channel = None
+        await voice.set_permissions(
+            member, overwrite=None if overwrite.is_empty() else overwrite, reason="Left temporary room"
+        )
 
     async def _set_default(self, voice: discord.VoiceChannel, **changes: bool | None) -> None:
         role = voice.guild.default_role
@@ -47,11 +59,14 @@ class PermissionService:
     async def block(self, voice: discord.VoiceChannel, target: discord.abc.User) -> None:
         overwrite = voice.overwrites_for(target)
         overwrite.connect = False
+        # A blocked user must not keep a leftover view grant that would let them see a hidden room.
+        overwrite.view_channel = False
         await voice.set_permissions(target, overwrite=overwrite, reason="Blocked in temporary room")
 
     async def unblock(self, voice: discord.VoiceChannel, target: discord.abc.User) -> None:
         overwrite = voice.overwrites_for(target)
         overwrite.connect = None
+        overwrite.view_channel = None
         await voice.set_permissions(
             target, overwrite=None if overwrite.is_empty() else overwrite, reason="Unblocked in temporary room"
         )
