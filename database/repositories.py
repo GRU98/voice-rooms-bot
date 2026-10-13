@@ -6,7 +6,7 @@ from sqlalchemy import delete, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from database.models import BlockedUser, GuildSettings, TemporaryChannel, utcnow
+from database.models import BlockedUser, GuildSettings, TemporaryChannel, UserPreset, utcnow
 
 SessionFactory = async_sessionmaker[AsyncSession]
 
@@ -141,6 +141,37 @@ class TemporaryChannelRepository:
                 return
             await session.execute(delete(BlockedUser).where(BlockedUser.temporary_channel_id == row.id))
             await session.delete(row)
+
+
+class UserPresetRepository:
+    def __init__(self, session_factory: SessionFactory) -> None:
+        self._sf = session_factory
+
+    async def get(self, guild_id: int, user_id: int) -> UserPreset | None:
+        async with self._sf() as session:
+            return await session.scalar(
+                select(UserPreset).where(UserPreset.guild_id == guild_id, UserPreset.user_id == user_id)
+            )
+
+    async def set(self, guild_id: int, user_id: int, base_name: str) -> UserPreset:
+        async with self._sf() as session, session.begin():
+            row = await session.scalar(
+                select(UserPreset).where(UserPreset.guild_id == guild_id, UserPreset.user_id == user_id)
+            )
+            if row is None:
+                row = UserPreset(guild_id=guild_id, user_id=user_id, base_name=base_name)
+                session.add(row)
+            else:
+                row.base_name = base_name
+                row.updated_at = utcnow()
+        return row
+
+    async def clear(self, guild_id: int, user_id: int) -> bool:
+        async with self._sf() as session, session.begin():
+            result = await session.execute(
+                delete(UserPreset).where(UserPreset.guild_id == guild_id, UserPreset.user_id == user_id)
+            )
+            return bool(result.rowcount)
 
 
 class BlockedUserRepository:
