@@ -15,7 +15,6 @@ from utils.permissions import can_manage
 log = logging.getLogger(__name__)
 
 VOICE_PREFIX = "🔊・"
-TEXT_PREFIX = "💬・"
 MAX_BASE_NAME = 90
 
 F = TypeVar("F", bound=Callable[..., Awaitable[Any]])
@@ -52,10 +51,6 @@ def split_room_name(name: str) -> str:
 def format_room_name(template: str, member: discord.abc.User) -> str:
     name = template.replace("{user}", getattr(member, "display_name", member.name)).strip()
     return (name or f"{VOICE_PREFIX}{member.name}")[:100]
-
-
-def text_channel_name(voice_name: str) -> str:
-    return f"{TEXT_PREFIX}{split_room_name(voice_name)}"[:100]
 
 
 async def reply(interaction: discord.Interaction, content: str) -> None:

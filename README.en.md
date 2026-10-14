@@ -10,7 +10,7 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[Русский](README.md) ·  English
+[Русский](README.md) · **English**
 
 </div>
 
@@ -50,6 +50,8 @@
 | 👑 **Ownership transfer** | Manual, or automatic when the owner leaves |
 | 📶 **Bitrate** | Limited by the server's boost level |
 | 🗑 **Delete room** | One click |
+| 💾 **Personal name preset** | Save the room name — your next rooms get it automatically |
+| 📩 **Panel to bottom** | Re-posts the panel at the end of the room's chat |
 | ⚙️ **`/setup`** | Channel Select menus (no IDs) and **Automatic Setup** |
 | 🔁 **Resilient** | Panels survive restarts, the database is reconciled with Discord |
 | 🏢 **Multi-guild** | Separate settings per server |
@@ -170,9 +172,13 @@ The panel appears in the voice channel's chat right after the room is created an
 | 👥 Limit | Choose the user limit |
 | 👑 Owner | Transfer ownership to another member |
 | 👤 Members | Kick, block, list blocked users and unblock |
-| ⚙️ Settings | Bitrate and delete room |
+| ⚙️ Settings | Bitrate, delete room, save and clear your personal name preset |
+| 📩 Panel to bottom | Deletes the old panel and posts a fresh one at the end of the chat |
 
 > Discord allows renaming a channel only twice per 10 minutes. The bot waits up to 15 seconds and reports when the limit is hit.
+
+When a room is hidden, members inside get a personal view grant; it is revoked automatically when they leave the room
+or get blocked. A blocked user cannot see a hidden room.
 
 ## 💬 Commands
 

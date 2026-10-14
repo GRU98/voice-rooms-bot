@@ -141,6 +141,17 @@ async def on_transfer(interaction: discord.Interaction) -> None:
 
 
 @guarded
+async def on_resend(interaction: discord.Interaction) -> None:
+    ctx = await resolve_room(interaction)
+    if ctx is None:
+        return
+    room, voice = ctx
+    await interaction.response.defer(ephemeral=True)
+    await interaction.client.services.voice.resend_panel(room, voice)  # type: ignore[attr-defined]
+    await interaction.followup.send("📩 Панель отправлена заново вниз чата.", ephemeral=True)
+
+
+@guarded
 async def on_settings(interaction: discord.Interaction) -> None:
     ctx = await resolve_room(interaction)
     if ctx is None:
@@ -182,3 +193,4 @@ class RoomPanelView(ui.View):
         self.add_item(PanelButton(label="Владелец", emoji="👑", custom_id="voice:transfer", handler=on_transfer, row=2))
         self.add_item(PanelButton(label="Участники", emoji="👤", custom_id="voice:members", handler=on_members, row=2))
         self.add_item(PanelButton(label="Настройки", emoji="⚙️", custom_id="voice:settings", handler=on_settings, row=3))
+        self.add_item(PanelButton(label="Панель вниз", emoji="📩", custom_id="voice:resend", handler=on_resend, row=3))
