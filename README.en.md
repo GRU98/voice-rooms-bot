@@ -10,7 +10,7 @@
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-[🇷🇺 Русский](README.md) · 🇬🇧 English
+[Русский](README.md) ·  English
 
 </div>
 
